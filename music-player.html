@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Stupid Playlist by Akash</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #121212;
+            color: white;
+            overflow: hidden;
+        }
+        
+        .bg-blur {
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+        }
+        
+        .player-container {
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+        
+        .song-item {
+            transition: all 0.2s ease;
+        }
+        
+        .song-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .song-item.active {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-left: 3px solid #1DB954;
+        }
+        
+        .song-list {
+            scrollbar-width: thin;
+            scrollbar-color: #333 #121212;
+        }
+        
+        .song-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .song-list::-webkit-scrollbar-track {
+            background: #121212;
+        }
+        
+        .song-list::-webkit-scrollbar-thumb {
+            background-color: #333;
+            border-radius: 20px;
+        }
+        
+        .album-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0.2;
+            top: 0;
+            left: 0;
+            background-size: cover;
+            background-position: center;
+            filter: blur(25px);
+            z-index: -1;
+            transition: background-image 1s ease;
+        }
+        
+        .seeking-progress {
+            background: linear-gradient(to right, #1DB954 var(--seek-percent), #555 var(--seek-percent));
+        }
+        
+        .album-art {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            transition: all 0.5s ease;
+        }
+        
+        .album-art:hover {
+            transform: scale(1.05);
+        }
+        
+        .control-button {
+            transition: all 0.2s ease;
+        }
+        
+        .control-button:hover {
+            transform: scale(1.1);
+            color: #1DB954;
+        }
+        
+        .play-button {
+            transition: all 0.2s ease;
+        }
+        
+        .play-button:hover {
+            transform: scale(1.15);
+            background-color: #1DB954;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .playing .album-art {
+            animation: pulse 4s infinite ease-in-out;
+        }
+        
+        .section-header {
+            padding: 3px 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: #fff;
+            background-color: #0c0c0c;
+            /*border-left: 3px solid #1DB954;*/
+        }
+        
+        .volume-slider {
+            --webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: #555;
+            outline: none;
+        }
+        
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .volume-slider::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+        }
+        
+        /* Mobile Responsive Styling */
+        @media (max-width: 768px) {
+            .player-container {
+                flex-direction: column;
+            }
+            
+            .song-list-panel {
+                width: 100%;
+                height: 40%;
+                border-right: none;
+                border-bottom: 1px solid #333;
+            }
+            
+            .main-player-area {
+                height: 60%;
+            }
+            
+            .song-info-display {
+                flex-direction: column;
+                padding: 1rem;
+            }
+            
+            .album-view, .info-view {
+                width: 100%;
+            }
+            
+            .album-art-container {
+                width: 9rem;
+                height: 9rem;
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+    
+    <script type="text/babel">
+        const playlistData = [
+            {
+                id: "section-1",
+                isSection: true,
+                title: "Prologue"
+            },
+            {
+                id: 1,
+                title: "Ouverture",
+                artist: "Daft Punk",
+                album: "Daft Club",
+                coverUrl: "covers/Daftclub.jpg",
+                audioUrl: "zxc/Ouverture.mp3",
+                funFact: "",
+                section: null
+            },
+            {
+                id: 2,
+                title: "Technologic",
+                artist: "Daft Punk",
+                album: "Human After All",
+                coverUrl: "covers/DP-HAA.jpg",
+                audioUrl: "zxc/Technologic.mp3",
+                funFact: "",
+                section: null
+            },
+            {
+                id: "section-1",
+                isSection: true,
+                title: "Energize",
+                color: "rgba(255, 0, 0, 0.15)"
+            },
+            {
+                id: 3,
+                title: "Stressed Out",
+                artist: "21 Pilots",
+                album: "Blurryface",
+                coverUrl: "covers/Blurryface.png",
+                audioUrl: "zxc/Stressed Out.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 4,
+                title: "They Don't Care About Us",
+                artist: "Micheal Jackson",
+                album: "HIStory",
+                coverUrl: "covers/Mjtdcau.jpg",
+                audioUrl: "zxc/TDCAU.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 5,
+                title: "Whatever It Takes",
+                artist: "Imagine Dragons",
+                album: "Evolve",
+                coverUrl: "covers/WIT.jpg",
+                audioUrl: "zxc/WIT.mp3",
+                funFact: "I like fast lyrics and I liked this song very much when I was young.",
+                section: ""
+            },
+            {
+                id: 6,
+                title: "When Can I See You Again?",
+                artist: "Owl City",
+                album: "Wreck-It Ralph",
+                coverUrl: "covers/WCISYA.jpeg",
+                audioUrl: "zxc/WCISYA.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: "section-1.5",
+                isSection: true,
+                title: "",
+                color: "rgba(255, 100, 0, 0.15)"
+            },
+            {
+                id: 7,
+                title: "Prototype",
+                artist: "Savant",
+                album: "Protos",
+                coverUrl: "covers/SPP.jpg",
+                audioUrl: "zxc/Prototype.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 8,
+                title: "Superheroes",
+                artist: "Daft Punk",
+                album: "Discovery",
+                coverUrl: "covers/DPD.png",
+                audioUrl: "zxc/Superheroes.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 9,
+                title: "Too Long",
+                artist: "Daft Punk",
+                album: "Discovery",
+                coverUrl: "covers/DPD.png",
+                audioUrl: "zxc/Too Long.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: "section-2",
+                isSection: true,
+                title: "Find",
+                color: "rgba(200, 255, 3, 0.15)"
+            },
+            {
+                id: 10,
+                title: "The Chain",
+                artist: "Fleetwood Mac",
+                album: "Rumours",
+                coverUrl: "covers/FMacRumours.png",
+                audioUrl: "zxc/The Chain.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 11,
+                title: "Nightcall",
+                artist: "Kavinsky",
+                album: "OutRun",
+                coverUrl: "covers/KNC.jpeg",
+                audioUrl: "zxc/Nightcall.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 12,
+                title: "1982",
+                artist: "Superhuman",
+                album: "1982 (Single)",
+                coverUrl: "covers/ab676.jpeg",
+                audioUrl: "zxc/1982.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: "section-2.5",
+                isSection: true,
+                title: "",
+                color: "rgba(150, 255, 93, 0.15)"
+            },
+            {
+                id: 13,
+                title: "Wake Me Up",
+                artist: "The Weeknd",
+                album: "Hurry up tomorrow",
+                coverUrl: "covers/TWHUT.jpg",
+                audioUrl: "zxc/Wake Me Up.mp3",
+                funFact: "Pay attention to the lyrics and try to figure out what the singer is talking about.",
+                section: ""
+            },
+            {
+                id: 14,
+                title: "Starboy",
+                artist: "The Weeknd",
+                album: "Starboy",
+                coverUrl: "covers/TWSB.jpg",
+                audioUrl: "zxc/sb.mp3",
+                funFact: "This song got me through a lot of episodes of depression.",
+                section: ""
+            },
+            {
+                id: 15,
+                title: "Naan Naan",
+                artist: "Santhosh Narayan",
+                album: "Mahaan",
+                coverUrl: "covers/NNM.jpeg",
+                audioUrl: "zxc/Naan Naan.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: "section-3",
+                isSection: true,
+                title: "Explore",
+                color: "rgba(61, 252, 18, 0.15)"
+            },
+            {
+                id: 16,
+                title: "Koyaanisqatsi",
+                artist: "Philip Glass",
+                album: "Koyaanisqatsi",
+                coverUrl: "covers/PGK.jpg",
+                audioUrl: "zxc/Koyaani.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 17,
+                title: "Cornfield Chase",
+                artist: "Hans Zimmer",
+                album: "Interstellar",
+                coverUrl: "covers/HZI.jpg",
+                audioUrl: "zxc/CornfieldCh.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 18,
+                title: "No Time for Caution",
+                artist: "Hans Zimmer",
+                album: "Interstellar",
+                coverUrl: "covers/HZI.jpg",
+                audioUrl: "zxc/NTfC.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 19,
+                title: "Shenzou",
+                artist: "Steven Price",
+                album: "Gravity",
+                coverUrl: "covers/SPG.jpeg",
+                audioUrl: "zxc/Shen.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 20,
+                title: "Gravity",
+                artist: "Steven Price",
+                album: "Gravity",
+                coverUrl: "covers/SPG.jpeg",
+                audioUrl: "zxc/Gravy.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: "section-4",
+                isSection: true,
+                title: "Memories",
+                color: "rgba(30, 250, 151, 0.15)"
+            },
+            {
+                id: 21,
+                title: "The Game of Love",
+                artist: "Daft Punk",
+                album: "Random Access Memories",
+                coverUrl: "covers/DPRAM.jpg",
+                audioUrl: "zxc/TGoL.mp3",
+                funFact: "",
+                section: null
+            },
+            {
+                id: 22,
+                title: "Within",
+                artist: "Daft Punk",
+                album: "Random Access Memories",
+                coverUrl: "covers/DPRAM.jpg",
+                audioUrl: "zxc/Within.mp3",
+                funFact: "",
+                section: null
+            },
+            {
+                id: 23,
+                title: "Instant Crush",
+                artist: "Daft Punk",
+                album: "Random Access Memories",
+                coverUrl: "covers/DPRAM.jpg",
+                audioUrl: "zxc/IC.mp3",
+                funFact: "",
+                section: null
+            },
+            {
+                id: 24,
+                title: "Touch",
+                artist: "Daft Punk",
+                album: "Random Access Memories",
+                coverUrl: "covers/DPRAM.jpg",
+                audioUrl: "zxc/Touch.mp3",
+                funFact: "",
+                section: null
+            },
+            {
+                id: 25,
+                title: "Beyond",
+                artist: "Daft Punk",
+                album: "Random Access Memories",
+                coverUrl: "covers/DPRAM.jpg",
+                audioUrl: "zxc/Beyond.mp3",
+                funFact: "",
+                section: null
+            },
+            {
+                id: 26,
+                title: "Father and Son",
+                artist: "Daft Punk",
+                album: "Tron: Legacy",
+                coverUrl: "covers/DPTL.jpg",
+                audioUrl: "zxc/DPFaS.mp3",
+                funFact: "",
+                section: null
+            },
+            {
+                id: 27,
+                title: "Veridis Quo",
+                artist: "Daft Punk",
+                album: "Discovery",
+                coverUrl: "covers/DPD.png",
+                audioUrl: "zxc/QuoVadis.mp3",
+                funFact: "",
+                section: null
+            },
+            {
+                id: "section-5",
+                isSection: true,
+                title: "Harbinger",
+                color: "rgba(30, 125, 250, 0.15)"
+            },
+            {
+                id: 28,
+                title: "Unbreakable",
+                artist: "James Newton Howard",
+                album: "Unbreakable",
+                coverUrl: "covers/JNHU.jpeg",
+                audioUrl: "zxc/Unbreakable.mp3",
+                funFact: "Fight",
+                section: ""
+            },
+            {
+                id: 29,
+                title: "Main Title",
+                artist: "John Paesano",
+                album: "Daredevil",
+                coverUrl: "covers/JPDD.jpg",
+                audioUrl: "zxc/MTDD.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 30,
+                title: "Fogwell's Gym",
+                artist: "John Paesano",
+                album: "Daredevil",
+                coverUrl: "covers/JPDD.jpg",
+                audioUrl: "zxc/F'sG.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: "section-5.5",
+                isSection: true,
+                title: "Game On",
+                color: "rgba(25, 50, 255, 0.15)"
+            },
+            {
+                id: 31,
+                title: "Rinzler",
+                artist: "Daft Punk",
+                album: "Tron: Legacy",
+                coverUrl: "covers/DPTL.jpg",
+                audioUrl: "zxc/Rinz.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 32,
+                title: "If You Love These People",
+                artist: "Hans Zimmer",
+                album: "Man of Steel",
+                coverUrl: "covers/HZMOS.jpg",
+                audioUrl: "zxc/IYLTP.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 33,
+                title: "Blood Bag",
+                artist: "Junkie XL",
+                album: "Mad Max Fury Road",
+                coverUrl: "covers/JXLMMFR.jpg",
+                audioUrl: "zxc/Blood Bag.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 34,
+                title: "Still Crazy",
+                artist: "Hans Zimmer",
+                album: "The Amazing Spider-Man 2",
+                coverUrl: "covers/HZTASM2.jpg",
+                audioUrl: "zxc/Still Crazy.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 35,
+                title: "Rollin' & Scratchin'",
+                artist: "Daft Punk",
+                album: "Homework",
+                coverUrl: "covers/DPHW.jpg",
+                audioUrl: "zxc/R&S.mp3",
+                funFact: "This is the number one \"weird\" song I was talking about. What I love about this song is the raw energy in the beats.",
+                section: ""
+            },
+            {
+                id: 36,
+                title: "Alive",
+                artist: "Daft Punk",
+                album: "Homework",
+                coverUrl: "covers/DPHW.jpg",
+                audioUrl: "zxc/Alive.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: "section-6",
+                isSection: true,
+                title: "Rise",
+                color: "rgba(81, 14, 237, 0.15)"
+            },
+            {
+                id: 37,
+                title: "Supermarine",
+                artist: "Hans Zimmer",
+                album: "Dunkirk",
+                coverUrl: "covers/HZD.jpg",
+                audioUrl: "zxc/Supermarine.mp3",
+                funFact: "This score inspired me to write a short film.",
+                section: ""
+            },
+            {
+                id: 38,
+                title: "Soyuz",
+                artist: "Steven Price",
+                album: "Gravity",
+                coverUrl: "covers/SPG.jpeg",
+                audioUrl: "zxc/Soyuz.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 39,
+                title: "You're That Spider Guy",
+                artist: "Hans Zimmer",
+                album: "The Amazing Spider-Man 2",
+                coverUrl: "covers/HZTASM2.jpg",
+                audioUrl: "zxc/YTSG.mp3",
+                funFact: "No matter how many times I listen to this, it never ceases to inspire me.",
+                section: ""
+            },
+            {
+                id: 40,
+                title: "Lost but Won",
+                artist: "Hans Zimmer",
+                album: "Rush",
+                coverUrl: "covers/HZR.jpg",
+                audioUrl: "zxc/LbW.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 41,
+                title: "Walhalla Awaits",
+                artist: "Zunkie XL",
+                album: "Mad Max Fury Road",
+                coverUrl: "covers/JXLMMFR.jpg",
+                audioUrl: "zxc/Wal Awa.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: "section-6",
+                isSection: true,
+                title: "Reflect",
+                color: "rgba(203, 5, 247, 0.15)"
+            },
+            {
+                id: 42,
+                title: "528491",
+                artist: "Hans Zimmer",
+                album: "Inception",
+                coverUrl: "covers/HZInc.jpg",
+                audioUrl: "zxc/528491.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 43,
+                title: "Paradox",
+                artist: "Hans Zimmer",
+                album: "Inception",
+                coverUrl: "covers/HZInc.jpg",
+                audioUrl: "zxc/Paradox.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 44,
+                title: "Time",
+                artist: "Hans Zimmer",
+                album: "Inception",
+                coverUrl: "covers/HZInc.jpg",
+                audioUrl: "zxc/Time.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 45,
+                title: "Apes Together Strong",
+                artist: "Michael Giacchino",
+                album: "War for the Planet of the Apes",
+                coverUrl: "covers/WftPotA.jpg",
+                audioUrl: "zxc/ATS.mp3",
+                funFact: "",
+                section: ""
+            },
+            {
+                id: 46,
+                title: "Through Falling Snow",
+                artist: "Jóhann Jóhannsson",
+                album: "Prisoners",
+                coverUrl: "covers/Prisoners.jpg",
+                audioUrl: "zxc/TFS.mp3",
+                funFact: "",
+                section: null
+            },
+            {
+                id: "section-7",
+                isSection: true,
+                title: "Nostalgia",
+                color: "rgba(245, 15, 68, 0.15)"
+            },
+            {
+                id: 47,
+                title: "Thaai Manam",
+                artist: "Sushin Shyaam",
+                album: "Manjummel Boys",
+                coverUrl: "covers/MB.jpeg",
+                audioUrl: "zxc/TM.mp3",
+                funFact: "",
+                section: null
+            },
+            {
+                id: 48,
+                title: "7 Years",
+                artist: "Lukas Graham",
+                album: "Lukas Graham",
+                coverUrl: "covers/LG7.jpeg",
+                audioUrl: "zxc/7y.mp3",
+                funFact: "",
+                section: null
+            },
+            {
+                id: 49,
+                title: "Father and Son",
+                artist: "Cat Stevens",
+                album: "Tea for the Tillerman",
+                coverUrl: "covers/TftT.jpeg",
+                audioUrl: "zxc/FandS.mp3",
+                funFact: "Maybe due to my father issues, I connected deeply with the lyrics of this song.",
+                section: null
+            },
+            {
+                id: 50,
+                title: "Let Her Go",
+                artist: "Passenger",
+                album: "All the Little Lights",
+                coverUrl: "covers/Lhgp.jpg",
+                audioUrl: "zxc/LHG.mp3",
+                funFact: "I used to listen to this song so much, I sang this song on stage in my college for my crush.",
+                section: null
+            },
+            {
+                id: 52,
+                title: "Photograph",
+                artist: "Ed Sheeran",
+                album: "X",
+                coverUrl: "covers/X.png",
+                audioUrl: "zxc/Photo.mp3",
+                funFact: "Out of all the songs, this song gives me the most nostalgia. I used to sit alone in a railway station listening to this song late into the night and the beats in this song remind me of a train passing through. It takes me right back to those days.",
+                section: null
+            },
+            {
+                id: null,
+                isSection: true,
+                title: "Epilogue"
+            },
+            {
+                id: 53,
+                title: "Contact",
+                artist: "Daft Punk",
+                album: "Random Access Memories",
+                coverUrl: "covers/DPRAM.jpg",
+                audioUrl: "zxc/Contact.mp3",
+                funFact: "Hands down, the best drums in any song ever. (In my opinion)",
+                section: null
+            },
+            {
+                id: 54,
+                title: "TRON Legacy (End Titles)",
+                artist: "Daft Punk",
+                album: "Tron: Legacy",
+                coverUrl: "covers/DPTL.jpg",
+                audioUrl: "zxc/TLET.mp3",
+                funFact: "",
+                section: null
+            }
+        ];
+
+
+        // Main App Component
+        function App() {
+            const [currentSongIndex, setCurrentSongIndex] = React.useState(0);
+            const [isPlaying, setIsPlaying] = React.useState(false);
+            const [progress, setProgress] = React.useState(0);
+            const [duration, setDuration] = React.useState(0);
+            const [volume, setVolume] = React.useState(0.1);
+
+            const audioRef = React.useRef(null);
+            const progressRef = React.useRef(null);
+            const songListRef = React.useRef(null);
+            
+            const actualSongs = React.useMemo(() => playlistData.filter(item => !item.isSection), [/* playlistData if it can change */]);
+            
+            const currentSong = actualSongs[currentSongIndex];
+            const currentSongPlaylistIndex = currentSong ? playlistData.findIndex(item => item.id === currentSong.id) : -1;
+            
+            const getCurrentSection = () => {
+                if (!currentSong || currentSongPlaylistIndex === -1) return "";
+                let sectionIndex = -1;
+                for (let i = currentSongPlaylistIndex; i >= 0; i--) {
+                    if (playlistData[i].isSection) {
+                        sectionIndex = i;
+                        break;
+                    }
+                }
+                return sectionIndex !== -1 ? playlistData[sectionIndex].title : "";
+            };
+            
+            // Effect to set volume for the single audio element
+            React.useEffect(() => {
+                if (audioRef.current) {
+                    audioRef.current.volume = volume;
+                }
+            }, [volume]);
+            
+            // Main playback logic for the single audioRef
+            React.useEffect(() => {
+                if (!audioRef.current || !currentSong ) {
+                    if (isPlaying && !currentSong) setIsPlaying(false);
+                    return;
+                }
+            
+                // If currentSong's audioUrl is different from audioRef's current src, update it.
+                // This happens when currentSong changes (e.g., next/prev, song selection).
+                const currentSrc = audioRef.current.src;
+                // Normalize URLs for comparison (browser might add base URL)
+                const newAudioUrl = new URL(currentSong.audioUrl, window.location.href).href;
+
+                if (currentSrc !== newAudioUrl) {
+                    audioRef.current.src = currentSong.audioUrl;
+                    // No need to call audioRef.current.load() explicitly, changing src does this.
+                }
+            
+                if (isPlaying) {
+                    // Play the audio. If src was just changed, it will play the new song.
+                    // If src was not changed, it will resume the current song.
+                    const playPromise = audioRef.current.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(error => {
+                            console.error("Playback failed for main audio:", currentSong.title, error);
+                            // If autoplay fails (e.g. after a src change on page load), set isPlaying to false.
+                            // This prevents the UI from showing "playing" when it's not.
+                            if (audioRef.current.paused) {
+                                setIsPlaying(false);
+                            }
+                        });
+                    }
+                } else {
+                    audioRef.current.pause();
+                }
+            }, [isPlaying, currentSong]); // Depend on isPlaying state and currentSong object
+
+            // Effect to scroll to the current song in the list
+            React.useEffect(() => {
+                if (songListRef.current && currentSong && currentSong.id) {
+                    const activeSongElement = songListRef.current.querySelector(`[data-song-id="${currentSong.id}"]`);
+                    if (activeSongElement) {
+                        activeSongElement.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'nearest' 
+                        });
+                    }
+                }
+            }, [currentSong]);
+            
+            const formatTime = (seconds) => {
+                if (isNaN(seconds) || seconds === Infinity) return "0:00";
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}:${secs < 10 ? '0' + secs : secs}`;
+            };
+            
+            const handlePlayPause = () => {
+                if (!currentSong) return;
+                setIsPlaying(!isPlaying);
+            };
+            
+            const handlePrevious = () => {
+                if (actualSongs.length === 0) return;
+                const prevIndex = currentSongIndex === 0 ? 
+                    actualSongs.length - 1 : 
+                    currentSongIndex - 1;
+                setCurrentSongIndex(prevIndex);
+                // If isPlaying was true, the useEffect for [isPlaying, currentSong] will handle playing the new song.
+            };
+            
+            const handleNext = React.useCallback(() => {
+                if (actualSongs.length === 0) return;
+                const nextIndex = (currentSongIndex + 1) % actualSongs.length;
+                setCurrentSongIndex(nextIndex);
+                // If isPlaying was true, the useEffect for [isPlaying, currentSong] will handle playing the new song.
+            }, [currentSongIndex, actualSongs]);
+            
+            const handleSongSelect = (playlistItemIndex) => {
+                const selectedItem = playlistData[playlistItemIndex];
+                if (selectedItem.isSection) return;
+
+                const songIndexInActualSongs = actualSongs.findIndex(s => s.id === selectedItem.id);
+                
+                if (songIndexInActualSongs !== -1) {
+                    if (currentSongIndex !== songIndexInActualSongs) {
+                        setCurrentSongIndex(songIndexInActualSongs);
+                    }
+                    setIsPlaying(true); 
+                }
+            };
+            
+            const handleTimeUpdate = () => {
+                if (!audioRef.current || !currentSong) return;
+                const currentTime = audioRef.current.currentTime;
+                const audioDuration = audioRef.current.duration;
+                
+                if (!isNaN(audioDuration) && audioDuration > 0) {
+                    setProgress(currentTime);
+                    // Duration is set via onLoadedMetadata.
+                    
+                    const percent = (currentTime / audioDuration) * 100;
+                    if (progressRef.current) {
+                        progressRef.current.style.setProperty('--seek-percent', `${percent}%`);
+                    }
+                    // REMOVED: Transition logic
+                }
+            };
+            
+            const handleSeek = (e) => {
+                if (!audioRef.current || !currentSong || isNaN(duration) || duration === 0) return;
+                const progressBar = e.currentTarget;
+                const clickPosition = e.nativeEvent.offsetX;
+                const progressBarWidth = progressBar.clientWidth;
+                const seekPercentage = clickPosition / progressBarWidth;
+                audioRef.current.currentTime = seekPercentage * duration;
+            };
+            
+            const handleEnded = React.useCallback(() => {
+                // Song finished, just go to the next one.
+                // isPlaying state will remain true (if it was true), 
+                // and the main playback useEffect will handle loading and playing the new currentSong.
+                handleNext();
+            }, [handleNext]);
+
+            const handleVolumeChange = (e) => {
+                const newVolume = parseFloat(e.target.value);
+                setVolume(newVolume);
+            };
+            
+            const getSectionStyle = (index) => {
+                let currentSectionColor = null;
+                for (let i = index; i >= 0; i--) {
+                    if (playlistData[i].isSection) {
+                        currentSectionColor = playlistData[i].color;
+                        break;
+                    }
+                }
+                return currentSectionColor ? { backgroundColor: currentSectionColor } : {};
+            };
+            
+            if (!currentSong) {
+                return <div className="flex items-center justify-center h-screen text-white text-xl">Loading playlist...</div>;
+            }
+
+            return (
+                <div className="player-container flex flex-col md:flex-row">
+                    {/* Song List Panel */}
+                    <div className="song-list-panel w-full md:w-1/4 h-1/2 md:h-full border-b md:border-r border-gray-800 bg-black bg-opacity-70 z-10">
+                        <div className="p-5 border-b border-gray-800">
+                            <h2 className="text-xl font-bold">Playlist For Imen</h2>
+                            <p className="text-gray-400 text-sm mt-1">A stupid playlist by Akash</p>
+                        </div>
+                        
+                        <div className="song-list overflow-y-auto h-5/6" ref={songListRef}>
+                            {playlistData.map((item, index) => (
+                                item.isSection ? (
+                                    <div 
+                                        key={item.id || `section-${index}`} 
+                                        className="section-header text-xs uppercase tracking-wider"
+                                        style={{ backgroundColor: item.color }}
+                                    >
+                                        {item.title}
+                                    </div>
+                                ) : (
+                                    <div 
+                                        key={item.id}
+                                        data-song-id={item.id} 
+                                        className={`song-item p-4 flex items-center cursor-pointer ${currentSong.id === item.id ? 'active' : ''}`}
+                                        onClick={() => handleSongSelect(index)}
+                                        style={getSectionStyle(index)}
+                                    >
+                                        <div className="w-10 h-10 mr-3 flex-shrink-0 overflow-hidden rounded">
+                                            <img src={item.coverUrl} alt={item.album} className="w-full h-full object-cover" />
+                                        </div>
+                                        <div className="flex-grow">
+                                            <div className="font-medium truncate">{item.title}</div>
+                                            <div className="text-gray-400 text-sm truncate">{item.artist}</div>
+                                        </div>
+                                        {currentSong.id === item.id && isPlaying && (
+                                            <div className="ml-2 text-green-500">
+                                                <i className="fas fa-volume-up"></i>
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            ))}
+                        </div>
+                    </div>
+                    
+                    {/* Main Player Area */}
+                    <div className={`main-player-area flex-grow flex flex-col h-1/2 md:h-full bg-blur bg-black bg-opacity-30 ${isPlaying ? 'playing' : ''}`}>
+                        <div className="album-bg" style={{ backgroundImage: `url("${currentSong.coverUrl}")` }}></div>
+                        <div className="flex-grow flex flex-col md:flex-row song-info-display p-5 md:p-10">
+                            {getCurrentSection() && (
+                                <div className="absolute top-4 right-4 bg-black bg-opacity-50 px-3 py-1 rounded-full text-xs font-semibold text-green-400">
+                                    {getCurrentSection()}
+                                </div>
+                            )}
+                            
+                            <div className="album-view w-full md:w-1/2 flex flex-col items-center justify-center">
+                                <div className="album-art-container w-48 h-48 md:w-64 md:h-64 mb-6 relative album-art">
+                                    <img 
+                                        src={currentSong.coverUrl} 
+                                        alt={currentSong.album} 
+                                        className="w-full h-full object-cover rounded-lg shadow-2xl"
+                                    />
+                                </div>
+                                <div className="text-center">
+                                    <h2 className="text-3xl font-bold">{currentSong.title}</h2>
+                                    <h3 className="text-xl text-gray-300">{currentSong.artist}</h3>
+                                    <p className="text-gray-400 mt-1">{currentSong.album}</p>
+                                </div>
+                            </div>
+                            
+                            <div className="info-view w-full md:w-1/2 flex items-center justify-center mt-6 md:mt-0">
+                                {currentSong.funFact ? (
+                                    <div className="bg-black bg-opacity-50 p-6 md:p-8 rounded-xl max-w-md backdrop-filter backdrop-blur-sm">
+                                        <h3 className="text-lg font-semibold mb-3 text-green-400">About This Song</h3>
+                                        <p className="text-gray-200 leading-relaxed">{currentSong.funFact}</p>
+                                    </div>
+                                ) : (
+                                    <div className="hidden"></div>
+                                )}
+                            </div>
+                        </div>
+                        
+                        {/* Player Controls */}
+                        <div className="h-24 px-5 md:px-10 pb-6">
+                            <div className="seeking-progress h-1 w-full bg-gray-600 rounded-full cursor-pointer mb-3" 
+                                ref={progressRef}
+                                onClick={handleSeek}>
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                                <div className="text-sm text-gray-400">
+                                    {formatTime(progress)} / {formatTime(duration)}
+                                </div>
+                                
+                                <div className="flex items-center space-x-4 md:space-x-6">
+                                    <button className="control-button text-xl md:text-2xl focus:outline-none" onClick={handlePrevious}>
+                                        <i className="fas fa-step-backward"></i>
+                                    </button>
+                                    
+                                    <button 
+                                        className="play-button w-10 h-10 md:w-12 md:h-12 rounded-full bg-white text-black flex items-center justify-center focus:outline-none"
+                                        onClick={handlePlayPause}
+                                    >
+                                        {isPlaying ? (
+                                            <i className="fas fa-pause"></i>
+                                        ) : (
+                                            <i className="fas fa-play"></i>
+                                        )}
+                                    </button>
+                                    
+                                    <button className="control-button text-xl md:text-2xl focus:outline-none" onClick={handleNext}>
+                                        <i className="fas fa-step-forward"></i>
+                                    </button>
+                                </div>
+                                
+                                <div className="flex items-center space-x-2 w-24">
+                                    <i className={`fas fa-volume-${volume === 0 ? 'mute' : volume < 0.5 ? 'down' : 'up'} text-gray-400`}></i>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="1"
+                                        step="0.01"
+                                        value={volume}
+                                        onChange={handleVolumeChange}
+                                        className="volume-slider w-16 md:w-20"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Single Main Audio Element */}
+                    <audio
+                        ref={audioRef}
+                        // src is set dynamically in the useEffect hook: [isPlaying, currentSong]
+                        onTimeUpdate={handleTimeUpdate}
+                        onLoadedMetadata={() => { 
+                            if (audioRef.current) setDuration(audioRef.current.duration);
+                        }}
+                        onEnded={handleEnded}
+                        preload="auto" // "metadata" or "auto" are fine. "auto" tries to buffer more.
+                    />
+                    {/* REMOVED: Second audio element for preloading */}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
